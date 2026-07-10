@@ -1,0 +1,117 @@
+use ard/testing
+
+use decode/decode
+
+fn parse(text: Str) Any!Str {
+  decode::from_json(text)
+}
+
+fn decode_error(result: $T!decode::Error) Str {
+  match result {
+    ok(_) => "",
+    err(e) => e.to_str(),
+  }
+}
+
+fn decoded(result: $T!decode::Error) $T!Str {
+  match result {
+    ok(value) => Result::ok(value),
+    err(e) => Result::err(e.to_str()),
+  }
+}
+
+test fn decodes_json_primitives() Void!Str {
+  let text = try parse("\"hello\"")
+  let number = try parse("42")
+  let flag = try parse("true")
+
+  try testing::assert((try decoded(decode::run(text, decode::string))) == "hello", "decodes strings")
+  try testing::assert(
+    (try decoded(decode::run(number, decode::int))) == 42,
+    "decodes integral JSON numbers",
+  )
+  try testing::assert(try decoded(decode::run(flag, decode::boolean)), "decodes booleans")
+  testing::pass()
+}
+
+test fn decodes_float_and_rejects_fractional_int() Void!Str {
+  let data = try parse("1.5")
+  try testing::assert((try decoded(decode::run(data, decode::float))) == 1.5, "decodes floats")
+  try testing::assert(
+    decode_error(decode::run(data, decode::int)) == "expected an integer",
+    "fractional values are not integers",
+  )
+  testing::pass()
+}
+
+test fn field_decodes_object_values() Void!Str {
+  let data = try parse("\{\"name\":\"Ada\"\}")
+  let name = try decoded(decode::run(data, decode::field("name", decode::string)))
+  try testing::assert(name == "Ada", "decodes a named field")
+  testing::pass()
+}
+
+test fn field_reports_missing_and_invalid_values() Void!Str {
+  let missing = try parse("\{\"other\":\"value\"\}")
+  let invalid = try parse("\{\"name\":12\}")
+
+  try testing::assert(
+    decode_error(decode::run(missing, decode::field("name", decode::string))) == "expected a value at name",
+    "reports missing field path",
+  )
+  try testing::assert(
+    decode_error(decode::run(invalid, decode::field("name", decode::string))) == "expected a string at name",
+    "reports invalid field path",
+  )
+  testing::pass()
+}
+
+test fn path_decodes_nested_values() Void!Str {
+  let data = try parse("\{\"user\":\{\"name\":\"Ada\"\}\}")
+  let name = try decoded(decode::run(data, decode::path(["user", "name"], decode::string)))
+  try testing::assert(name == "Ada", "decodes a nested path")
+  testing::pass()
+}
+
+test fn path_reports_nested_errors() Void!Str {
+  let data = try parse("\{\"user\":\{\"name\":false\}\}")
+  let result = decode::run(data, decode::path(["user", "name"], decode::string))
+  try testing::assert(
+    decode_error(result) == "expected a string at user.name",
+    "reports the complete path",
+  )
+  testing::pass()
+}
+
+test fn list_decodes_items_and_reports_indexes() Void!Str {
+  let valid = try parse("[1,2,3]")
+  let invalid = try parse("[1,\"two\"]")
+  let values = try decoded(decode::run(valid, decode::list(decode::int)))
+
+  try testing::assert(values.size() == 3, "decodes every list item")
+  try testing::assert(values.at(2).expect("bounds") == 3, "preserves list values")
+  try testing::assert(
+    decode_error(decode::run(invalid, decode::list(decode::int))) == "expected a number at 1",
+    "reports failing list index",
+  )
+  testing::pass()
+}
+
+test fn nullable_decodes_null_and_present_values() Void!Str {
+  let absent = try parse("null")
+  let present = try parse("\"Ada\"")
+  let decoder = decode::nullable(decode::string)
+
+  let none = try decoded(decode::run(absent, decoder))
+  let some = try decoded(decode::run(present, decoder))
+  try testing::assert(none.is_none(), "null becomes none")
+  try testing::assert(some.expect("present") == "Ada", "non-null uses inner decoder")
+  testing::pass()
+}
+
+test fn malformed_json_returns_a_string_error() Void!Str {
+  match decode::from_json("[") {
+    ok(_) => testing::fail("malformed JSON should fail"),
+    err(e) => testing::assert(e != "", "returns an error message"),
+  }
+}
