@@ -2,7 +2,7 @@
 
 ## Project
 
-`decode` is a small Ard library for decoding opaque `Any` values into typed values with composable, path-aware errors. It requires Ard 0.26.0 or newer and targets Go because JSON parsing uses `go:encoding/json`.
+`decode` is a small Ard library for decoding opaque `Any` values into typed values with composable, path-aware errors.
 
 ## Layout
 
@@ -15,7 +15,7 @@
 Run before committing:
 
 ```sh
-ard format --check .
+ard format .
 ard test
 ```
 

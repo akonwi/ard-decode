@@ -1,6 +1,6 @@
 # decode
 
-Composable, type-safe decoders for Ard `Any` values.
+Composable, type-safe decoders for Ard `Any` values, heavily inspired by Gleam's [`gleam/dynamic/decode`](https://hexdocs.pm/gleam_stdlib/gleam/dynamic/decode.html) module.
 
 `decode` parses JSON into Ard's opaque `Any` type and provides primitive decoders and combinators that turn those values into typed data with path-aware errors.
 
@@ -83,6 +83,6 @@ Utilities:
 ## Development
 
 ```sh
-ard format --check .
+ard format .
 ard test
 ```
