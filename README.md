@@ -7,20 +7,19 @@ Composable, type-safe decoders for Ard `Any` values, heavily inspired by Gleam's
 ## Requirements
 
 - Ard 0.26.0 or newer
-- Go target (JSON parsing uses Go's `encoding/json` package)
 
 ## Installation
 
 Add the repository as an Ard dependency:
 
 ```sh
-ard add <repository-url>@<tag-or-commit> as decode
+ard add github.com/akonwi/ard-decode@latest as decode
 ```
 
 Then import the module:
 
 ```ard
-use decode/decode
+use decode
 ```
 
 For local development, add a path dependency to `ard.toml`:
@@ -33,7 +32,7 @@ decode = { path = "../decode" }
 ## Usage
 
 ```ard
-use decode/decode
+use decode
 
 fn title_from_json(text: Str) Str!Str {
   let data = try decode::from_json(text)
