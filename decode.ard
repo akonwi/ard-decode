@@ -9,17 +9,17 @@ use go:encoding/json
 // string, float64, bool, nil); decoders recover typed Ard values from it
 // with explicit errors instead of panics.
 //
-// A decoder is any `fn(Any) $T!Error`. Combinators like `field`, `list`, and
+// A decoder is any `fn(Any) $T!DecodeError`. Combinators like `field`, `list`, and
 // `nullable` build bigger decoders out of smaller ones:
 //
 //   let title = try decode::run(data, decode::field("title", decode::string))
 
-struct Error {
+struct DecodeError {
   expected: Str,
   path: [Str],
 }
 
-impl Error {
+impl DecodeError {
   fn to_str() Str {
     match self.path.size() == 0 {
       true => "expected {self.expected}",
@@ -37,16 +37,16 @@ impl Error {
   }
 }
 
-private fn fail(expected: Str) Error {
-  Error{expected: expected, path: []}
+private fn fail(expected: Str) DecodeError {
+  DecodeError{expected: expected, path: []}
 }
 
-private fn nest(err: Error, segment: Str) Error {
+private fn nest(err: DecodeError, segment: Str) DecodeError {
   mut path = [segment]
   for p in err.path {
     path.push(p)
   }
-  Error{expected: err.expected, path: path}
+  DecodeError{expected: err.expected, path: path}
 }
 
 // Parse JSON text into an untyped value.
@@ -60,13 +60,13 @@ fn from_json(text: Str) Any!Str {
 }
 
 // Run a decoder against a value.
-fn run(data: Any, decoder: fn(Any) $T!Error) $T!Error {
+fn run(data: Any, decoder: fn(Any) $T!DecodeError) $T!DecodeError {
   decoder(data)
 }
 
 // ─── Primitive decoders ────────────────────────────────────────────────
 
-fn string(data: Any) Str!Error {
+fn string(data: Any) Str!DecodeError {
   match unsafe::cast<Str>(data) {
     value => Result::ok(value),
     _ => Result::err(fail("a string")),
@@ -76,7 +76,7 @@ fn string(data: Any) Str!Error {
 // Numbers arrive as Float64 from JSON and as native Int from database/sql
 // row scans (see ffi/db.go, which normalizes int64 -> int on the Go side).
 // Accept either shape and reject non-integral Float64s.
-fn int(data: Any) Int!Error {
+fn int(data: Any) Int!DecodeError {
   match unsafe::cast<Int>(data) {
     n => Result::ok(n),
     _ => {
@@ -94,14 +94,14 @@ fn int(data: Any) Int!Error {
   }
 }
 
-fn float(data: Any) Float64!Error {
+fn float(data: Any) Float64!DecodeError {
   match unsafe::cast<Float64>(data) {
     value => Result::ok(value),
     _ => Result::err(fail("a number")),
   }
 }
 
-fn boolean(data: Any) Bool!Error {
+fn boolean(data: Any) Bool!DecodeError {
   match unsafe::cast<Bool>(data) {
     value => Result::ok(value),
     _ => Result::err(fail("a boolean")),
@@ -109,15 +109,15 @@ fn boolean(data: Any) Bool!Error {
 }
 
 // Pass the raw value through untouched (the old `decode::dynamic`).
-fn any(data: Any) Any!Error {
+fn any(data: Any) Any!DecodeError {
   Result::ok(data)
 }
 
 // ─── Combinators ───────────────────────────────────────────────────────
 
 // JSON null decodes to none; anything else runs the inner decoder.
-fn nullable(decoder: fn(Any) $T!Error) fn(Any) $T?!Error {
-  fn(data: Any) $T?!Error {
+fn nullable(decoder: fn(Any) $T!DecodeError) fn(Any) $T?!DecodeError {
+  fn(data: Any) $T?!DecodeError {
     match unsafe::is_nil(data) {
       true => Result::ok(Maybe::new()),
       false => {
@@ -128,8 +128,8 @@ fn nullable(decoder: fn(Any) $T!Error) fn(Any) $T?!Error {
   }
 }
 
-fn list(decoder: fn(Any) $T!Error) fn(Any) [$T]!Error {
-  fn(data: Any) [$T]!Error {
+fn list(decoder: fn(Any) $T!DecodeError) fn(Any) [$T]!DecodeError {
+  fn(data: Any) [$T]!DecodeError {
     match unsafe::cast<[Any]>(data) {
       items => {
         mut out: [$T] = []
@@ -144,8 +144,8 @@ fn list(decoder: fn(Any) $T!Error) fn(Any) [$T]!Error {
   }
 }
 
-fn field(name: Str, decoder: fn(Any) $T!Error) fn(Any) $T!Error {
-  fn(data: Any) $T!Error {
+fn field(name: Str, decoder: fn(Any) $T!DecodeError) fn(Any) $T!DecodeError {
+  fn(data: Any) $T!DecodeError {
     match unsafe::cast<[Str: Any]>(data) {
       obj => {
         match obj.get(name) {
@@ -153,7 +153,7 @@ fn field(name: Str, decoder: fn(Any) $T!Error) fn(Any) $T!Error {
             let decoded = try decoder(value) -> e { Result::err(nest(e, name)) }
             Result::ok(decoded)
           },
-          _ => Result::err(Error{expected: "a value", path: [name]}),
+          _ => Result::err(DecodeError{expected: "a value", path: [name]}),
         }
       },
       _ => Result::err(fail("an object")),
@@ -161,15 +161,15 @@ fn field(name: Str, decoder: fn(Any) $T!Error) fn(Any) $T!Error {
   }
 }
 
-fn path(names: [Str], decoder: fn(Any) $T!Error) fn(Any) $T!Error {
-  fn(data: Any) $T!Error {
+fn path(names: [Str], decoder: fn(Any) $T!DecodeError) fn(Any) $T!DecodeError {
+  fn(data: Any) $T!DecodeError {
     walk_path(data, names, 0, decoder)
   }
 }
 
 // Note: public rather than private, and written with explicit match instead
 // of `try ... -> catch`, to work around generic-function miscompiles (ard#282).
-fn walk_path(data: Any, names: [Str], index: Int, decoder: fn(Any) $T!Error) $T!Error {
+fn walk_path(data: Any, names: [Str], index: Int, decoder: fn(Any) $T!DecodeError) $T!DecodeError {
   match index >= names.size() {
     true => decoder(data),
     false => {
@@ -183,7 +183,7 @@ fn walk_path(data: Any, names: [Str], index: Int, decoder: fn(Any) $T!Error) $T!
                 err(e) => Result::err(nest(e, name)),
               }
             },
-            _ => Result::err(Error{expected: "a value", path: [name]}),
+            _ => Result::err(DecodeError{expected: "a value", path: [name]}),
           }
         },
         _ => Result::err(fail("an object")),

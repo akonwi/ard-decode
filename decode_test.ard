@@ -6,14 +6,14 @@ fn parse(text: Str) Any!Str {
   decode::from_json(text)
 }
 
-fn decode_error(result: $T!decode::Error) Str {
+fn decode_error(result: $T!decode::DecodeError) Str {
   match result {
     ok(_) => "",
     err(e) => e.to_str(),
   }
 }
 
-fn decoded(result: $T!decode::Error) $T!Str {
+fn decoded(result: $T!decode::DecodeError) $T!Str {
   match result {
     ok(value) => Result::ok(value),
     err(e) => Result::err(e.to_str()),
