@@ -37,6 +37,12 @@ impl DecodeError {
   }
 }
 
+impl Error for DecodeError {
+  fn error() Str {
+    self.to_str()
+  }
+}
+
 private fn fail(expected: Str) DecodeError {
   DecodeError{expected: expected, path: []}
 }

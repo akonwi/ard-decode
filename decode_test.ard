@@ -20,6 +20,10 @@ fn decoded(result: $T!decode::DecodeError) $T!Str {
   }
 }
 
+fn error_message(error: Error) Str {
+  error.error()
+}
+
 test fn decodes_json_primitives() Void!Str {
   let text = try parse("\"hello\"")
   let number = try parse("42")
@@ -107,6 +111,17 @@ test fn nullable_decodes_null_and_present_values() Void!Str {
   try testing::assert(none.is_none(), "null becomes none")
   try testing::assert(some.expect("present") == "Ada", "non-null uses inner decoder")
   testing::pass()
+}
+
+test fn decode_error_implements_builtin_error() Void!Str {
+  let data = try parse("42")
+
+  match decode::run(data, decode::string) {
+    ok(_) => testing::fail("expected decode failure"),
+    err(error) => {
+      testing::assert(error_message(error) == error.to_str(), "DecodeError implements Error")
+    },
+  }
 }
 
 test fn malformed_json_returns_a_string_error() Void!Str {
