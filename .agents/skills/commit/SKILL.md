@@ -51,7 +51,7 @@ Use `!` before the colon and add a `BREAKING CHANGE:` footer for breaking change
 ```text
 feat(api)!: rename decode error type
 
-BREAKING CHANGE: `decode::Error` is now `decode::DecodeError`.
+BREAKING CHANGE: `decode::DecodeError` is now `decode::Err`.
 ```
 
 ## Choosing the Message
@@ -60,7 +60,7 @@ Describe the purpose of the complete diff, not the editing action or file names.
 
 ```text
 fix(parser): preserve nested error paths
-refactor(decode): rename Error to DecodeError
+refactor(decode): rename DecodeError to Err
 docs: document nullable decoder behavior
 ```
 

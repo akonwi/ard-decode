@@ -6,14 +6,14 @@ fn parse(text: Str) Any!Str {
   decode::from_json(text)
 }
 
-fn decode_error(result: $T!decode::DecodeError) Str {
+fn decode_error(result: $T!decode::Err) Str {
   match result {
     ok(_) => "",
     err(e) => e.to_str(),
   }
 }
 
-fn decoded(result: $T!decode::DecodeError) $T!Str {
+fn decoded(result: $T!decode::Err) $T!Str {
   match result {
     ok(value) => Result::ok(value),
     err(e) => Result::err(e.to_str()),
@@ -118,9 +118,7 @@ test fn decode_error_implements_builtin_error() Void!Str {
 
   match decode::run(data, decode::string) {
     ok(_) => testing::fail("expected decode failure"),
-    err(error) => {
-      testing::assert(error_message(error) == error.to_str(), "DecodeError implements Error")
-    },
+    err(error) => testing::assert(error_message(error) == error.to_str(), "Err implements Error"),
   }
 }
 
