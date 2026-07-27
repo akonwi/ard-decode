@@ -53,6 +53,8 @@ impl Error for ParseErr {
   }
 }
 
+// this and the constrived `ParseErr` struct are an ugly workaround.
+// `errors::New()` could be used but its return signature is treated as a Result (Void|Str) in Ard
 private fn box_error(error: Error) Error {
   error
 }
