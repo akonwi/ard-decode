@@ -12,7 +12,7 @@ use go:encoding/json
 // A decoder is any `fn(Any) $T!Err`. Combinators like `field`, `list`, and
 // `nullable` build bigger decoders out of smaller ones:
 //
-//   let title = try decode::run(data, decode::field("title", decode::string))
+//   let title = try decode::unmarshal(text, decode::field("title", decode::string))
 
 struct Err {
   expected: Str,
@@ -43,6 +43,20 @@ impl Error for Err {
   }
 }
 
+private struct ParseErr {
+  message: Str,
+}
+
+impl Error for ParseErr {
+  fn error() Str {
+    self.message
+  }
+}
+
+private fn box_error(error: Error) Error {
+  error
+}
+
 private fn fail(expected: Str) Err {
   Err{expected: expected, path: []}
 }
@@ -62,6 +76,19 @@ fn from_json(text: Str) Any!Str {
   match json::Unmarshal(bytes, mut holder) {
     ok => Result::ok(holder),
     err(e) => Result::err("invalid JSON: {e}"),
+  }
+}
+
+// Parse JSON text and decode the resulting value.
+fn unmarshal(text: Str, decoder: fn(Any) $T!Err) $T!Error {
+  match from_json(text) {
+    ok(data) => {
+      match decoder(data) {
+        ok(value) => Result::ok(value),
+        err(e) => Result::err(box_error(e)),
+      }
+    },
+    err(message) => Result::err(box_error(ParseErr{message: message})),
   }
 }
 

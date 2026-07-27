@@ -38,6 +38,23 @@ test fn decodes_json_primitives() Void!Str {
   testing::pass()
 }
 
+test fn unmarshal_parses_and_decodes_json() Void!Str {
+  match decode::unmarshal("\{\"name\":\"Ada\"\}", decode::field("name", decode::string)) {
+    ok(name) => try testing::assert(name == "Ada", "parses and decodes in one call"),
+    err(e) => try testing::fail(e.error()),
+  }
+
+  match decode::unmarshal("[", decode::string) {
+    ok(_) => try testing::fail("malformed JSON should fail"),
+    err(e) => try testing::assert(e.error() != "", "returns the JSON parse error"),
+  }
+
+  match decode::unmarshal("42", decode::string) {
+    ok(_) => testing::fail("invalid value should fail"),
+    err(e) => testing::assert(e.error() == "expected a string", "returns the decode error"),
+  }
+}
+
 test fn decodes_float_and_rejects_fractional_int() Void!Str {
   let data = try parse("1.5")
   try testing::assert((try decoded(decode::run(data, decode::float))) == 1.5, "decodes floats")

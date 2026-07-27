@@ -6,7 +6,7 @@ Composable, type-safe decoders for Ard `Any` values, heavily inspired by Gleam's
 
 ## Requirements
 
-- Ard 0.26.0 or newer
+- Ard 0.28.0 or newer
 
 ## Installation
 
@@ -34,13 +34,12 @@ decode = { path = "../decode" }
 ```ard
 use decode
 
-fn title_from_json(text: Str) Str!Str {
-  let data = try decode::from_json(text)
-  decode::run(data, decode::field("title", decode::string)) -> err {
-    Result::err(err.to_str())
-  }
+fn title_from_json(text: Str) Str!Error {
+  decode::unmarshal(text, decode::field("title", decode::string))
 }
 ```
+
+`unmarshal` is the high-level API: it parses JSON and applies the decoder in one call. The lower-level `from_json` and `run` functions remain available when an untyped value needs to be decoded more than once.
 
 Decoders can be composed for nested and optional values:
 
@@ -75,9 +74,10 @@ Combinators:
 
 Utilities:
 
+- `unmarshal` parses JSON and applies a decoder, returning Ard's built-in `Error`
 - `from_json` parses JSON text into `Any`
-- `run` applies a decoder
-- `Error.to_str()` formats failures with their nested path
+- `run` applies a decoder to an `Any` value
+- `Err.to_str()` formats decode failures with their nested path
 
 ## Development
 
