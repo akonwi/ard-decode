@@ -64,18 +64,17 @@ private fn fail(expected: Str) Err {
 }
 
 private fn nest(err: Err, segment: Str) Err {
-  mut path = [segment]
+  let path = mut [segment]
   for p in err.path {
     path.push(p)
   }
-  Err{expected: err.expected, path: path}
+  Err{expected: err.expected, path: deref path}
 }
 
 // Parse JSON text into an untyped value.
 fn from_json(text: Str) Any!Str {
   mut holder: Any = ""
-  mut bytes = text.bytes()
-  match json::Unmarshal(bytes, mut holder) {
+  match json::Unmarshal(mut text.bytes(), mut holder) {
     ok => Result::ok(holder),
     err(e) => Result::err("invalid JSON: {e}"),
   }
@@ -167,12 +166,12 @@ fn list(decoder: fn(Any) $T!Err) fn(Any) [$T]!Err {
   fn(data: Any) [$T]!Err {
     match unsafe::cast<[Any]>(data) {
       items => {
-        mut out: [$T] = []
+        let out = mut List::new<$T>()
         for item, idx in items {
           let value = try decoder(item) -> e { Result::err(nest(e, "{idx}")) }
           out.push(value)
         }
-        Result::ok(out)
+        Result::ok(deref out)
       },
       _ => Result::err(fail("a list")),
     }
