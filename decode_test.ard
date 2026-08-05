@@ -39,7 +39,7 @@ test fn decodes_json_primitives() Void!Str {
 }
 
 test fn unmarshal_parses_and_decodes_json() Void!Str {
-  match decode::unmarshal("\{\"name\":\"Ada\"\}", decode::field("name", decode::string)) {
+  match decode::unmarshal("{{\"name\":\"Ada\"}}", decode::field("name", decode::string)) {
     ok(name) => try testing::assert(name == "Ada", "parses and decodes in one call"),
     err(e) => try testing::fail(e.error()),
   }
@@ -66,15 +66,15 @@ test fn decodes_float_and_rejects_fractional_int() Void!Str {
 }
 
 test fn field_decodes_object_values() Void!Str {
-  let data = try parse("\{\"name\":\"Ada\"\}")
+  let data = try parse("{{\"name\":\"Ada\"}}")
   let name = try decoded(decode::run(data, decode::field("name", decode::string)))
   try testing::assert(name == "Ada", "decodes a named field")
   testing::pass()
 }
 
 test fn field_reports_missing_and_invalid_values() Void!Str {
-  let missing = try parse("\{\"other\":\"value\"\}")
-  let invalid = try parse("\{\"name\":12\}")
+  let missing = try parse("{{\"other\":\"value\"}}")
+  let invalid = try parse("{{\"name\":12}}")
 
   try testing::assert(
     decode_error(decode::run(missing, decode::field("name", decode::string))) == "expected a value at name",
@@ -88,14 +88,14 @@ test fn field_reports_missing_and_invalid_values() Void!Str {
 }
 
 test fn path_decodes_nested_values() Void!Str {
-  let data = try parse("\{\"user\":\{\"name\":\"Ada\"\}\}")
+  let data = try parse("{{\"user\":{{\"name\":\"Ada\"}}}}")
   let name = try decoded(decode::run(data, decode::path(["user", "name"], decode::string)))
   try testing::assert(name == "Ada", "decodes a nested path")
   testing::pass()
 }
 
 test fn path_reports_nested_errors() Void!Str {
-  let data = try parse("\{\"user\":\{\"name\":false\}\}")
+  let data = try parse("{{\"user\":{{\"name\":false}}}}")
   let result = decode::run(data, decode::path(["user", "name"], decode::string))
   try testing::assert(
     decode_error(result) == "expected a string at user.name",
