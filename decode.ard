@@ -116,10 +116,9 @@ fn int(data: Any) Int!Err {
     _ => {
       match unsafe::cast<Float64>(data) {
         value => {
-          let truncated = value.to_int()
-          match truncated.to_f64() == value {
-            true => Result::ok(truncated),
-            false => Result::err(fail("an integer")),
+          match Int::try(value) {
+            n => Result::ok(n),
+            _ => Result::err(fail("an integer")),
           }
         },
         _ => Result::err(fail("a number")),
