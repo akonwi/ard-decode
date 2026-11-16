@@ -6,7 +6,7 @@ Composable, type-safe decoders for Ard `Any` values, heavily inspired by Gleam's
 
 ## Requirements
 
-- Ard 0.28.0 or newer
+- Ard 0.48.0 or newer
 
 ## Installation
 
