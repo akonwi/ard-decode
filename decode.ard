@@ -149,8 +149,8 @@ fn any(data: Any) Any!Err {
 // ─── Combinators ───────────────────────────────────────────────────────
 
 // JSON null decodes to none; anything else runs the inner decoder.
-fn nullable(decoder: fn(Any) $T!Err) fn(Any) $T?!Err {
-  fn(data: Any) $T?!Err {
+fn nullable(decoder: fn(Any) $T!Err) fn(Any) ($T?)!Err {
+  fn(data: Any) ($T?)!Err {
     match unsafe::is_nil(data) {
       true => Result::ok(Maybe::new()),
       false => {
