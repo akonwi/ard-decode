@@ -116,6 +116,41 @@ test fn path_reports_nested_errors() Void!Str {
   testing::pass()
 }
 
+test fn path_reports_missing_segments_and_non_objects() Void!Str {
+  let missing = try parse("{{\"user\":{{}}}}")
+  let scalar = try parse("{{\"user\":5}}")
+  let root = try parse("[]")
+  let decoder = decode::path(["user", "name"], decode::string)
+
+  try testing::assert(
+    decode_error(decode::run(missing, decoder)) == "expected a value at user.name",
+    "reports the missing segment",
+  )
+  try testing::assert(
+    decode_error(decode::run(scalar, decoder)) == "expected an object at user",
+    "reports where a non-object was found",
+  )
+  try testing::assert(
+    decode_error(decode::run(root, decoder)) == "expected an object",
+    "reports a non-object root without a path",
+  )
+  testing::pass()
+}
+
+test fn empty_path_decodes_the_value_itself() Void!Str {
+  let data = try parse("\"Ada\"")
+  let name = try decoded(decode::run(data, decode::path([], decode::string)))
+  try testing::assert(name == "Ada", "runs the decoder on the root value")
+  testing::pass()
+}
+
+test fn unmarshal_reports_nested_decode_paths() Void!Str {
+  match decode::unmarshal("{{\"user\":{{\"age\":\"x\"}}}}", decode::path(["user", "age"], decode::int)) {
+    ok(_) => testing::fail("invalid nested value should fail"),
+    err(e) => testing::assert(e.error() == "expected a number at user.age", "keeps the decode path"),
+  }
+}
+
 test fn list_decodes_items_and_reports_indexes() Void!Str {
   let valid = try parse("[1,2,3]")
   let invalid = try parse("[1,\"two\"]")
