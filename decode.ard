@@ -43,6 +43,8 @@ impl Error for Err {
   }
 }
 
+// Wraps a JSON parse message as an `Error`. `errors::New()` can't be used
+// because Ard treats a Go `error` return as `Void!Error`.
 private struct ParseErr {
   message: Str,
 }
@@ -51,12 +53,6 @@ impl Error for ParseErr {
   fn error() Str {
     self.message
   }
-}
-
-// this and the constrived `ParseErr` struct are an ugly workaround.
-// `errors::New()` could be used but its return signature is treated as a Result (Void|Str) in Ard
-private fn box_error(error: Error) Error {
-  error
 }
 
 private fn fail(expected: Str) Err {
@@ -82,15 +78,9 @@ fn from_json(text: Str) Any!Str {
 
 // Parse JSON text and decode the resulting value.
 fn unmarshal(text: Str, decoder: fn(Any) $T!Err) $T!Error {
-  match from_json(text) {
-    ok(data) => {
-      match decoder(data) {
-        ok(value) => Result::ok(value),
-        err(e) => Result::err(box_error(e)),
-      }
-    },
-    err(message) => Result::err(box_error(ParseErr{message: message})),
-  }
+  let data = try from_json(text) -> message { Result::err(ParseErr{message: message}) }
+  let value = try decoder(data) -> e { Result::err(e) }
+  Result::ok(value)
 }
 
 // Run a decoder against a value.
@@ -200,27 +190,16 @@ fn path(names: [Str], decoder: fn(Any) $T!Err) fn(Any) $T!Err {
   }
 }
 
-// Note: public rather than private, and written with explicit match instead
-// of `try ... -> catch`, to work around generic-function miscompiles (ard#282).
-fn walk_path(data: Any, names: [Str], index: Int, decoder: fn(Any) $T!Err) $T!Err {
-  match index >= names.size() {
-    true => decoder(data),
-    false => {
-      let name = names.at(index).expect("bounds checked")
-      match unsafe::cast<[Str: Any]>(data) {
-        obj => {
-          match obj.get(name) {
-            value => {
-              match walk_path(value, names, index + 1, decoder) {
-                ok(decoded) => Result::ok(decoded),
-                err(e) => Result::err(nest(e, name)),
-              }
-            },
-            _ => Result::err(Err{expected: "a value", path: [name]}),
-          }
-        },
-        _ => Result::err(fail("an object")),
-      }
+// Decodes the value at `names[index..]`, prefixing errors with the segments
+// walked so far.
+private fn walk_path(data: Any, names: [Str], index: Int, decoder: fn(Any) $T!Err) $T!Err {
+  match names.at(index) {
+    name => {
+      let obj = try unsafe::cast<[Str: Any]>(data) -> _ { Result::err(fail("an object")) }
+      let value = try obj.get(name) -> _ { Result::err(Err{expected: "a value", path: [name]}) }
+      let decoded = try walk_path(value, names, index + 1, decoder) -> e { Result::err(nest(e, name)) }
+      Result::ok(decoded)
     },
+    _ => decoder(data),
   }
 }
